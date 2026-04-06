@@ -66,11 +66,11 @@ func (n *Filename) WAL() string {
 	return n.path(n.wrp.Xsqlite3_filename_wal)
 }
 
-func (n *Filename) path(fn func(int32) int32) string {
+func (n *Filename) path(fn func(int64) int64) string {
 	if n.flags&(OPEN_MAIN_DB|OPEN_MAIN_JOURNAL|OPEN_WAL) == 0 {
 		return ""
 	}
-	name := ptr_t(fn(int32(n.zPath)))
+	name := ptr_t(fn(int64(n.zPath)))
 	return n.wrp.ReadString(name, _MAX_PATHNAME)
 }
 
@@ -85,7 +85,7 @@ func (n *Filename) DatabaseFile() File {
 		return nil
 	}
 
-	pFile := ptr_t(n.wrp.Xsqlite3_database_file_object(int32(n.zPath)))
+	pFile := ptr_t(n.wrp.Xsqlite3_database_file_object(int64(n.zPath)))
 	file, _ := vfsFileGet(n.wrp, ptr_t(pFile)).(File)
 	return file
 }
@@ -98,7 +98,7 @@ func (n *Filename) URIParameter(key string) string {
 		return ""
 	}
 
-	ptr := ptr_t(n.wrp.Xsqlite3_uri_key(int32(n.zPath), 0))
+	ptr := ptr_t(n.wrp.Xsqlite3_uri_key(int64(n.zPath), 0))
 	if ptr == 0 {
 		return ""
 	}
@@ -130,7 +130,7 @@ func (n *Filename) URIParameters() url.Values {
 		return nil
 	}
 
-	ptr := ptr_t(n.wrp.Xsqlite3_uri_key(int32(n.zPath), 0))
+	ptr := ptr_t(n.wrp.Xsqlite3_uri_key(int64(n.zPath), 0))
 	if ptr == 0 {
 		return nil
 	}

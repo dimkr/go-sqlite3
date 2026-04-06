@@ -6,7 +6,7 @@ func (w *Wrapper) Free(ptr Ptr_t) {
 	if ptr == 0 {
 		return
 	}
-	w.Xsqlite3_free(int32(ptr))
+	w.Xsqlite3_free(int64(ptr))
 }
 
 func (w *Wrapper) New(size int64) Ptr_t {
@@ -18,7 +18,7 @@ func (w *Wrapper) New(size int64) Ptr_t {
 }
 
 func (w *Wrapper) Realloc(ptr Ptr_t, size int64) Ptr_t {
-	ptr = Ptr_t(w.Xsqlite3_realloc64(int32(ptr), size))
+	ptr = Ptr_t(w.Xsqlite3_realloc64(int64(ptr), size))
 	if ptr == 0 && size != 0 {
 		panic(errutil.OOMErr)
 	}

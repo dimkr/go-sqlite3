@@ -60,8 +60,8 @@ func CreateModule[T VTab](db *Conn, name string, create, connect VTabConstructor
 	if connect != nil {
 		modulePtr = db.wrp.AddHandle(module[T]{create, connect})
 	}
-	rc := res_t(db.wrp.Xsqlite3_create_module_go(int32(db.handle),
-		int32(namePtr), int32(flags), int32(modulePtr)))
+	rc := res_t(db.wrp.Xsqlite3_create_module_go(int64(db.handle),
+		int64(namePtr), int32(flags), int64(modulePtr)))
 	return db.error(rc)
 }
 
@@ -79,7 +79,7 @@ func (c *Conn) DeclareVTab(sql string) error {
 	}
 	defer c.arena.Mark()()
 	textPtr := c.arena.String(sql)
-	rc := res_t(c.wrp.Xsqlite3_declare_vtab(int32(c.handle), int32(textPtr)))
+	rc := res_t(c.wrp.Xsqlite3_declare_vtab(int64(c.handle), int64(textPtr)))
 	return c.error(rc)
 }
 
@@ -100,7 +100,7 @@ const (
 //
 // https://sqlite.org/c3ref/vtab_on_conflict.html
 func (c *Conn) VTabOnConflict() VTabConflictMode {
-	return VTabConflictMode(c.wrp.Xsqlite3_vtab_on_conflict(int32(c.handle)))
+	return VTabConflictMode(c.wrp.Xsqlite3_vtab_on_conflict(int64(c.handle)))
 }
 
 // VTabConfigOption is a virtual table configuration option.
@@ -125,7 +125,7 @@ func (c *Conn) VTabConfig(op VTabConfigOption, args ...any) error {
 			i = 1
 		}
 	}
-	rc := res_t(c.wrp.Xsqlite3_vtab_config_go(int32(c.handle), int32(op), i))
+	rc := res_t(c.wrp.Xsqlite3_vtab_config_go(int64(c.handle), int32(op), i))
 	return c.error(rc)
 }
 
@@ -309,14 +309,14 @@ type IndexConstraintUsage struct {
 func (idx *IndexInfo) RHSValue(column int) (Value, error) {
 	defer idx.c.arena.Mark()()
 	valPtr := idx.c.arena.New(ptrlen)
-	rc := res_t(idx.c.wrp.Xsqlite3_vtab_rhs_value(int32(idx.handle),
-		int32(column), int32(valPtr)))
+	rc := res_t(idx.c.wrp.Xsqlite3_vtab_rhs_value(int64(idx.handle),
+		int32(column), int64(valPtr)))
 	if err := idx.c.error(rc); err != nil {
 		return Value{}, err
 	}
 	return Value{
 		c:      idx.c,
-		handle: ptr_t(idx.c.wrp.Read32(valPtr)),
+		handle: ptr_t(idx.c.wrp.Read64(valPtr)),
 	}, nil
 }
 
@@ -324,7 +324,7 @@ func (idx *IndexInfo) RHSValue(column int) (Value, error) {
 //
 // https://sqlite.org/c3ref/vtab_collation.html
 func (idx *IndexInfo) Collation(column int) string {
-	ptr := ptr_t(idx.c.wrp.Xsqlite3_vtab_collation(int32(idx.handle),
+	ptr := ptr_t(idx.c.wrp.Xsqlite3_vtab_collation(int64(idx.handle),
 		int32(column)))
 	return idx.c.wrp.ReadString(ptr, _MAX_NAME)
 }
@@ -333,7 +333,7 @@ func (idx *IndexInfo) Collation(column int) string {
 //
 // https://sqlite.org/c3ref/vtab_distinct.html
 func (idx *IndexInfo) Distinct() int {
-	i := int32(idx.c.wrp.Xsqlite3_vtab_distinct(int32(idx.handle)))
+	i := int32(idx.c.wrp.Xsqlite3_vtab_distinct(int64(idx.handle)))
 	return int(i)
 }
 
@@ -341,7 +341,7 @@ func (idx *IndexInfo) Distinct() int {
 //
 // https://sqlite.org/c3ref/vtab_in.html
 func (idx *IndexInfo) In(column, handle int) bool {
-	b := int32(idx.c.wrp.Xsqlite3_vtab_in(int32(idx.handle),
+	b := int32(idx.c.wrp.Xsqlite3_vtab_in(int64(idx.handle),
 		int32(column), int32(handle)))
 	return b != 0
 }
@@ -354,9 +354,9 @@ func (idx *IndexInfo) load() {
 	nConstraint := int32(mem.Read32(ptr + 0))
 	idx.Constraint = make([]IndexConstraint, nConstraint)
 	idx.ConstraintUsage = make([]IndexConstraintUsage, nConstraint)
-	idx.OrderBy = make([]IndexOrderBy, int32(mem.Read32(ptr+8)))
+	idx.OrderBy = make([]IndexOrderBy, int32(mem.Read32(ptr+16)))
 
-	constraintPtr := ptr_t(mem.Read32(ptr + 4))
+	constraintPtr := ptr_t(mem.Read64(ptr + 8))
 	constraint := idx.Constraint
 	for i := range idx.Constraint {
 		constraint[i] = IndexConstraint{
@@ -367,7 +367,7 @@ func (idx *IndexInfo) load() {
 		constraintPtr += 12
 	}
 
-	orderByPtr := ptr_t(mem.Read32(ptr + 12))
+	orderByPtr := ptr_t(mem.Read64(ptr + 24))
 	orderBy := idx.OrderBy
 	for i := range orderBy {
 		orderBy[i] = IndexOrderBy{
@@ -377,9 +377,9 @@ func (idx *IndexInfo) load() {
 		orderByPtr += 8
 	}
 
-	idx.EstimatedCost = mem.ReadFloat64(ptr + 40)
-	idx.EstimatedRows = int64(mem.Read64(ptr + 48))
-	idx.ColumnsUsed = mem.Read64(ptr + 64)
+	idx.EstimatedCost = mem.ReadFloat64(ptr + 64)
+	idx.EstimatedRows = int64(mem.Read64(ptr + 72))
+	idx.ColumnsUsed = mem.Read64(ptr + 88)
 }
 
 func (idx *IndexInfo) save() {
@@ -387,7 +387,7 @@ func (idx *IndexInfo) save() {
 	mem := idx.c.wrp.Memory
 	ptr := idx.handle
 
-	usagePtr := ptr_t(mem.Read32(ptr + 16))
+	usagePtr := ptr_t(mem.Read64(ptr + 32))
 	for _, usage := range idx.ConstraintUsage {
 		mem.Write32(usagePtr+0, uint32(usage.ArgvIndex))
 		if usage.Omit {
@@ -396,17 +396,17 @@ func (idx *IndexInfo) save() {
 		usagePtr += 8
 	}
 
-	mem.Write32(ptr+20, uint32(idx.IdxNum))
+	mem.Write32(ptr+40, uint32(idx.IdxNum))
 	if idx.IdxStr != "" {
-		mem.Write32(ptr+24, uint32(idx.c.wrp.NewString(idx.IdxStr)))
-		mem.WriteBool(ptr+28, true) // needToFreeIdxStr
+		mem.Write64(ptr+48, uint64(idx.c.wrp.NewString(idx.IdxStr)))
+		mem.WriteBool(ptr+56, true) // needToFreeIdxStr
 	}
 	if idx.OrderByConsumed {
-		mem.WriteBool(ptr+32, true)
+		mem.WriteBool(ptr+60, true)
 	}
-	mem.WriteFloat64(ptr+40, idx.EstimatedCost)
-	mem.Write64(ptr+48, uint64(idx.EstimatedRows))
-	mem.Write32(ptr+56, uint32(idx.IdxFlags))
+	mem.WriteFloat64(ptr+64, idx.EstimatedCost)
+	mem.Write64(ptr+72, uint64(idx.EstimatedRows))
+	mem.Write32(ptr+80, uint32(idx.IdxFlags))
 }
 
 // IndexConstraintOp is a virtual table constraint operator code.
@@ -444,12 +444,12 @@ const (
 	INDEX_SCAN_HEX    IndexScanFlag = 0x00000002
 )
 
-func (e *env) vtabModuleCallback(kind vtabConstructor, pMod, nArg, pArg, ppVTab, pzErr int32) int32 {
+func (e *env) vtabModuleCallback(kind vtabConstructor, pMod int64, nArg int32, pArg, ppVTab, pzErr int64) int32 {
 	arg := make([]reflect.Value, 1+nArg)
 	arg[0] = reflect.ValueOf(e.DB)
 
 	for i := range nArg {
-		ptr := ptr_t(e.Memory.Read32(ptr_t(pArg + i*ptrlen)))
+		ptr := ptr_t(e.Memory.Read64(ptr_t(pArg + int64(i)*int64(ptrlen))))
 		arg[i+1] = reflect.ValueOf(e.ReadString(ptr, _MAX_SQL_LENGTH))
 	}
 
@@ -463,26 +463,26 @@ func (e *env) vtabModuleCallback(kind vtabConstructor, pMod, nArg, pArg, ppVTab,
 	return e.vtabError(pzErr, _PTR_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_create(pMod, nArg, pArg, ppVTab, pzErr int32) int32 {
+func (e *env) Xgo_vtab_create(pMod int64, nArg int32, pArg, ppVTab, pzErr int64) int32 {
 	return e.vtabModuleCallback(xCreate, pMod, nArg, pArg, ppVTab, pzErr)
 }
 
-func (e *env) Xgo_vtab_connect(pMod, nArg, pArg, ppVTab, pzErr int32) int32 {
+func (e *env) Xgo_vtab_connect(pMod int64, nArg int32, pArg, ppVTab, pzErr int64) int32 {
 	return e.vtabModuleCallback(xConnect, pMod, nArg, pArg, ppVTab, pzErr)
 }
 
-func (e *env) Xgo_vtab_disconnect(pVTab int32) int32 {
+func (e *env) Xgo_vtab_disconnect(pVTab int64) int32 {
 	err := e.vtabDelHandle(pVTab)
 	return e.vtabError(0, _PTR_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_destroy(pVTab int32) int32 {
+func (e *env) Xgo_vtab_destroy(pVTab int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabDestroyer)
 	err := errors.Join(vtab.Destroy(), e.vtabDelHandle(pVTab))
 	return e.vtabError(0, _PTR_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_best_index(pVTab, pIdxInfo int32) int32 {
+func (e *env) Xgo_vtab_best_index(pVTab, pIdxInfo int64) int32 {
 	var info IndexInfo
 	info.handle = ptr_t(pIdxInfo)
 	info.c = e.DB.(*Conn)
@@ -495,7 +495,7 @@ func (e *env) Xgo_vtab_best_index(pVTab, pIdxInfo int32) int32 {
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_update(pVTab, nArg, pArg, pRowID int32) int32 {
+func (e *env) Xgo_vtab_update(pVTab int64, nArg int32, pArg, pRowID int64) int32 {
 	db := e.DB.(*Conn)
 	args := callbackArgs(db, nArg, ptr_t(pArg))
 	defer returnArgs(args)
@@ -509,13 +509,13 @@ func (e *env) Xgo_vtab_update(pVTab, nArg, pArg, pRowID int32) int32 {
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_rename(pVTab, zNew int32) int32 {
+func (e *env) Xgo_vtab_rename(pVTab, zNew int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabRenamer)
 	err := vtab.Rename(e.ReadString(ptr_t(zNew), _MAX_NAME))
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_find_function(pVTab, nArg, zName, pxFunc int32) int32 {
+func (e *env) Xgo_vtab_find_function(pVTab int64, nArg int32, zName, pxFunc int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabOverloader)
 	f, op := vtab.FindFunction(int(nArg), e.ReadString(ptr_t(zName), _MAX_NAME))
 	if op != 0 {
@@ -529,7 +529,7 @@ func (e *env) Xgo_vtab_find_function(pVTab, nArg, zName, pxFunc int32) int32 {
 	return int32(op)
 }
 
-func (e *env) Xgo_vtab_integrity(pVTab, zSchema, zTabName, mFlags, pzErr int32) int32 {
+func (e *env) Xgo_vtab_integrity(pVTab, zSchema, zTabName int64, mFlags int32, pzErr int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabChecker)
 	schema := e.ReadString(ptr_t(zSchema), _MAX_NAME)
 	table := e.ReadString(ptr_t(zTabName), _MAX_NAME)
@@ -539,49 +539,49 @@ func (e *env) Xgo_vtab_integrity(pVTab, zSchema, zTabName, mFlags, pzErr int32) 
 	return e.vtabError(pzErr, _PTR_ERROR, err, _OK)
 }
 
-func (e *env) Xgo_vtab_begin(pVTab int32) int32 {
+func (e *env) Xgo_vtab_begin(pVTab int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabTxn)
 	err := vtab.Begin()
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_sync(pVTab int32) int32 {
+func (e *env) Xgo_vtab_sync(pVTab int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabTxn)
 	err := vtab.Sync()
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_commit(pVTab int32) int32 {
+func (e *env) Xgo_vtab_commit(pVTab int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabTxn)
 	err := vtab.Commit()
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_rollback(pVTab int32) int32 {
+func (e *env) Xgo_vtab_rollback(pVTab int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabTxn)
 	err := vtab.Rollback()
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_savepoint(pVTab, id int32) int32 {
+func (e *env) Xgo_vtab_savepoint(pVTab int64, id int32) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabSavepointer)
 	err := vtab.Savepoint(int(id))
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_release(pVTab, id int32) int32 {
+func (e *env) Xgo_vtab_release(pVTab int64, id int32) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabSavepointer)
 	err := vtab.Release(int(id))
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_vtab_rollback_to(pVTab, id int32) int32 {
+func (e *env) Xgo_vtab_rollback_to(pVTab int64, id int32) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTabSavepointer)
 	err := vtab.RollbackTo(int(id))
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_cur_open(pVTab, ppCur int32) int32 {
+func (e *env) Xgo_cur_open(pVTab, ppCur int64) int32 {
 	vtab := e.vtabGetHandle(pVTab).(VTab)
 
 	cursor, err := vtab.Open()
@@ -592,12 +592,12 @@ func (e *env) Xgo_cur_open(pVTab, ppCur int32) int32 {
 	return e.vtabError(pVTab, _VTAB_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_cur_close(pCur int32) int32 {
+func (e *env) Xgo_cur_close(pCur int64) int32 {
 	err := e.vtabDelHandle(pCur)
 	return e.vtabError(0, _PTR_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_cur_filter(pCur, idxNum, idxStr, nArg, pArg int32) int32 {
+func (e *env) Xgo_cur_filter(pCur int64, idxNum int32, idxStr int64, nArg int32, pArg int64) int32 {
 	db := e.DB.(*Conn)
 	args := callbackArgs(db, nArg, ptr_t(pArg))
 	defer returnArgs(args)
@@ -612,7 +612,7 @@ func (e *env) Xgo_cur_filter(pCur, idxNum, idxStr, nArg, pArg int32) int32 {
 	return e.vtabError(pCur, _CURSOR_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_cur_eof(pCur int32) int32 {
+func (e *env) Xgo_cur_eof(pCur int64) int32 {
 	cursor := e.vtabGetHandle(pCur).(VTabCursor)
 	if cursor.EOF() {
 		return 1
@@ -620,20 +620,20 @@ func (e *env) Xgo_cur_eof(pCur int32) int32 {
 	return 0
 }
 
-func (e *env) Xgo_cur_next(pCur int32) int32 {
+func (e *env) Xgo_cur_next(pCur int64) int32 {
 	cursor := e.vtabGetHandle(pCur).(VTabCursor)
 	err := cursor.Next()
 	return e.vtabError(pCur, _CURSOR_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_cur_column(pCur, pCtx, n int32) int32 {
+func (e *env) Xgo_cur_column(pCur, pCtx int64, n int32) int32 {
 	cursor := e.vtabGetHandle(pCur).(VTabCursor)
 	db := e.DB.(*Conn)
 	err := cursor.Column(Context{db, ptr_t(pCtx)}, int(n))
 	return e.vtabError(pCur, _CURSOR_ERROR, err, ERROR)
 }
 
-func (e *env) Xgo_cur_rowid(pCur, pRowID int32) int32 {
+func (e *env) Xgo_cur_rowid(pCur, pRowID int64) int32 {
 	cursor := e.vtabGetHandle(pCur).(VTabCursor)
 
 	rowID, err := cursor.RowID()
@@ -650,40 +650,40 @@ const (
 	_CURSOR_ERROR
 )
 
-func (e *env) vtabError(ptr int32, kind uint32, err error, def ErrorCode) int32 {
-	const zErrMsgOffset = 8
+func (e *env) vtabError(ptr int64, kind uint32, err error, def ErrorCode) int32 {
+	const zErrMsgOffset = 16
 	msg, code := errorCode(err, def)
 	if ptr != 0 && msg != "" {
 		switch kind {
 		case _VTAB_ERROR:
 			ptr = ptr + zErrMsgOffset // zErrMsg
 		case _CURSOR_ERROR:
-			ptr = int32(e.Memory.Read32(ptr_t(ptr))) + zErrMsgOffset // pVTab->zErrMsg
+			ptr = int64(e.Memory.Read64(ptr_t(ptr))) + zErrMsgOffset // pVTab->zErrMsg
 		}
 		db := e.DB.(*Conn)
-		if ptr := ptr_t(e.Memory.Read32(ptr_t(ptr))); ptr != 0 {
+		if ptr := ptr_t(e.Memory.Read64(ptr_t(ptr))); ptr != 0 {
 			db.wrp.Free(ptr)
 		}
-		e.Memory.Write32(ptr_t(ptr), uint32(db.wrp.NewString(msg)))
+		e.Memory.Write64(ptr_t(ptr), uint64(db.wrp.NewString(msg)))
 	}
 	return int32(code)
 }
 
-func (e *env) vtabGetHandle(ptr int32) any {
-	const handleOffset = 4
-	handle := ptr_t(e.Memory.Read32(ptr_t(ptr) - handleOffset))
+func (e *env) vtabGetHandle(ptr int64) any {
+	const handleOffset = 8
+	handle := ptr_t(e.Memory.Read64(ptr_t(ptr) - handleOffset))
 	return e.GetHandle(handle)
 }
 
-func (e *env) vtabDelHandle(ptr int32) error {
-	const handleOffset = 4
-	handle := ptr_t(e.Memory.Read32(ptr_t(ptr) - handleOffset))
+func (e *env) vtabDelHandle(ptr int64) error {
+	const handleOffset = 8
+	handle := ptr_t(e.Memory.Read64(ptr_t(ptr) - handleOffset))
 	return e.DelHandle(handle)
 }
 
-func (e *env) vtabPutHandle(pptr int32, val any) {
-	const handleOffset = 4
+func (e *env) vtabPutHandle(pptr int64, val any) {
+	const handleOffset = 8
 	handle := e.AddHandle(val)
-	ptr := ptr_t(e.Memory.Read32(ptr_t(pptr)))
-	e.Memory.Write32(ptr-handleOffset, uint32(handle))
+	ptr := ptr_t(e.Memory.Read64(ptr_t(pptr)))
+	e.Memory.Write64(ptr-handleOffset, uint64(handle))
 }

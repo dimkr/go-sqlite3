@@ -265,9 +265,9 @@ func vfsFileControlImpl(wrp *sqlite3_wrap.Wrapper, file File, op _FcntlOpcode, p
 	case _FCNTL_PRAGMA:
 		if file, ok := file.(FilePragma); ok {
 			var value string
-			ptr := ptr_t(mem.Read32(pArg + 1*ptrlen))
+			ptr := ptr_t(mem.Read64(pArg + 1*ptrlen))
 			name := mem.ReadString(ptr, _MAX_SQL_LENGTH)
-			if ptr := ptr_t(mem.Read32(pArg + 2*ptrlen)); ptr != 0 {
+			if ptr := ptr_t(mem.Read64(pArg + 2*ptrlen)); ptr != 0 {
 				value = mem.ReadString(ptr, _MAX_SQL_LENGTH)
 			}
 
@@ -335,7 +335,7 @@ func vfsShmBarrier(wrp *sqlite3_wrap.Wrapper, pFile ptr_t) {
 }
 
 //go:linkname vfsShmMap
-func vfsShmMap(wrp *sqlite3_wrap.Wrapper, pFile ptr_t, iRegion, szRegion, bExtend int32, pp ptr_t) _ErrorCode {
+func vfsShmMap(wrp *sqlite3_wrap.Wrapper, pFile ptr_t, iRegion, szRegion int64, bExtend int32, pp ptr_t) _ErrorCode {
 	shm := vfsFileGet(wrp, pFile).(FileSharedMemory).SharedMemory()
 	p, err := shm.shmMap(wrp, iRegion, szRegion, bExtend != 0)
 	wrp.Write32(pp, uint32(p))
@@ -359,8 +359,8 @@ func vfsShmUnmap(wrp *sqlite3_wrap.Wrapper, pFile ptr_t, bDelete int32) _ErrorCo
 func vfsGet(wrp *sqlite3_wrap.Wrapper, pVfs ptr_t) VFS {
 	var name string
 	if pVfs != 0 {
-		const zNameOffset = 16
-		ptr := ptr_t(wrp.Read32(pVfs + zNameOffset))
+		const zNameOffset = 24
+		ptr := ptr_t(wrp.Read64(pVfs + zNameOffset))
 		name = wrp.ReadString(ptr, _MAX_NAME)
 	}
 	if vfs := Find(name); vfs != nil {
@@ -370,20 +370,20 @@ func vfsGet(wrp *sqlite3_wrap.Wrapper, pVfs ptr_t) VFS {
 }
 
 func vfsFileRegister(wrp *sqlite3_wrap.Wrapper, pFile ptr_t, file File) {
-	const fileHandleOffset = 4
+	const fileHandleOffset = 8
 	id := wrp.AddHandle(file)
-	wrp.Write32(pFile+fileHandleOffset, uint32(id))
+	wrp.Write64(pFile+fileHandleOffset, uint64(id))
 }
 
 func vfsFileGet(wrp *sqlite3_wrap.Wrapper, pFile ptr_t) any {
-	const fileHandleOffset = 4
-	id := ptr_t(wrp.Read32(pFile + fileHandleOffset))
+	const fileHandleOffset = 8
+	id := ptr_t(wrp.Read64(pFile + fileHandleOffset))
 	return wrp.GetHandle(id)
 }
 
 func vfsFileClose(wrp *sqlite3_wrap.Wrapper, pFile ptr_t) error {
-	const fileHandleOffset = 4
-	id := ptr_t(wrp.Read32(pFile + fileHandleOffset))
+	const fileHandleOffset = 8
+	id := ptr_t(wrp.Read64(pFile + fileHandleOffset))
 	return wrp.DelHandle(id)
 }
 

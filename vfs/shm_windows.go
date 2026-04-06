@@ -62,7 +62,7 @@ func (s *vfsShm) shmOpen() error {
 	return err
 }
 
-func (s *vfsShm) shmMap(wrp *sqlite3_wrap.Wrapper, id, size int32, extend bool) (_ ptr_t, err error) {
+func (s *vfsShm) shmMap(wrp *sqlite3_wrap.Wrapper, id, size int64, extend bool) (_ ptr_t, err error) {
 	// Ensure size is a multiple of the OS page size.
 	if size != _WALINDEX_PGSZ || (windows.Getpagesize()-1)&_WALINDEX_PGSZ != 0 {
 		return 0, _IOERR_SHMMAP
@@ -152,7 +152,7 @@ func (s *vfsShm) shmUnmap(delete bool) {
 
 	// Free local memory.
 	for _, p := range s.ptrs {
-		s.wrp.Xsqlite3_free(int32(p))
+		s.wrp.Xsqlite3_free(int64(p))
 	}
 	s.ptrs = nil
 	s.shadow = nil

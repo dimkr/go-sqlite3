@@ -14,8 +14,8 @@ type MappedRegion struct {
 	addr uintptr
 }
 
-func MapRegion(f *os.File, offset int64, size int32) (*MappedRegion, error) {
-	maxSize := offset + int64(size)
+func MapRegion(f *os.File, offset, size int64) (*MappedRegion, error) {
+	maxSize := offset + size
 	h, err := windows.CreateFileMapping(
 		windows.Handle(f.Fd()), nil, windows.PAGE_READWRITE,
 		uint32(maxSize>>32), uint32(maxSize), nil)

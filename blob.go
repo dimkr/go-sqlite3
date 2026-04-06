@@ -46,17 +46,17 @@ func (c *Conn) OpenBlob(db, table, column string, row int64, write bool) (*Blob,
 		flags = 1
 	}
 
-	rc := res_t(c.wrp.Xsqlite3_blob_open(int32(c.handle),
-		int32(dbPtr), int32(tablePtr), int32(columnPtr),
-		row, flags, int32(blobPtr)))
+	rc := res_t(c.wrp.Xsqlite3_blob_open(int64(c.handle),
+		int64(dbPtr), int64(tablePtr), int64(columnPtr),
+		row, flags, int64(blobPtr)))
 
 	if err := c.error(rc); err != nil {
 		return nil, err
 	}
 
 	blob := Blob{c: c}
-	blob.handle = ptr_t(c.wrp.Read32(blobPtr))
-	blob.bytes = int64(c.wrp.Xsqlite3_blob_bytes(int32(blob.handle)))
+	blob.handle = ptr_t(c.wrp.Read64(blobPtr))
+	blob.bytes = int64(c.wrp.Xsqlite3_blob_bytes(int64(blob.handle)))
 	return &blob, nil
 }
 
@@ -70,7 +70,7 @@ func (b *Blob) Close() error {
 		return nil
 	}
 
-	rc := res_t(b.c.wrp.Xsqlite3_blob_close(int32(b.handle)))
+	rc := res_t(b.c.wrp.Xsqlite3_blob_close(int64(b.handle)))
 	b.c.wrp.Free(b.bufptr)
 	b.handle = 0
 	return b.c.error(rc)
@@ -101,8 +101,8 @@ func (b *Blob) Read(p []byte) (n int, err error) {
 		b.buflen = want
 	}
 
-	rc := res_t(b.c.wrp.Xsqlite3_blob_read(int32(b.handle),
-		int32(b.bufptr), int32(want), int32(b.offset)))
+	rc := res_t(b.c.wrp.Xsqlite3_blob_read(int64(b.handle),
+		int64(b.bufptr), int32(want), int32(b.offset)))
 	err = b.c.error(rc)
 	if err != nil {
 		return 0, err
@@ -135,8 +135,8 @@ func (b *Blob) WriteTo(w io.Writer) (n int64, err error) {
 	}
 
 	for want > 0 {
-		rc := res_t(b.c.wrp.Xsqlite3_blob_read(int32(b.handle),
-			int32(b.bufptr), int32(want), int32(b.offset)))
+		rc := res_t(b.c.wrp.Xsqlite3_blob_read(int64(b.handle),
+			int64(b.bufptr), int32(want), int32(b.offset)))
 		err = b.c.error(rc)
 		if err != nil {
 			return n, err
@@ -173,8 +173,8 @@ func (b *Blob) Write(p []byte) (n int, err error) {
 	}
 	b.c.wrp.WriteBytes(b.bufptr, p)
 
-	rc := res_t(b.c.wrp.Xsqlite3_blob_write(int32(b.handle),
-		int32(b.bufptr), int32(want), int32(b.offset)))
+	rc := res_t(b.c.wrp.Xsqlite3_blob_write(int64(b.handle),
+		int64(b.bufptr), int32(want), int32(b.offset)))
 	err = b.c.error(rc)
 	if err != nil {
 		return 0, err
@@ -207,8 +207,8 @@ func (b *Blob) ReadFrom(r io.Reader) (n int64, err error) {
 		mem := b.c.wrp.Bytes(b.bufptr, want)
 		m, err := r.Read(mem[:want])
 		if m > 0 {
-			rc := res_t(b.c.wrp.Xsqlite3_blob_write(int32(b.handle),
-				int32(b.bufptr), int32(m), int32(b.offset)))
+			rc := res_t(b.c.wrp.Xsqlite3_blob_write(int64(b.handle),
+				int64(b.bufptr), int32(m), int32(b.offset)))
 			err := b.c.error(rc)
 			if err != nil {
 				return n, err
@@ -259,8 +259,8 @@ func (b *Blob) Reopen(row int64) error {
 	if b.c.interrupt.Err() != nil {
 		return INTERRUPT
 	}
-	err := b.c.error(res_t(b.c.wrp.Xsqlite3_blob_reopen(int32(b.handle), row)))
-	b.bytes = int64(b.c.wrp.Xsqlite3_blob_bytes(int32(b.handle)))
+	err := b.c.error(res_t(b.c.wrp.Xsqlite3_blob_reopen(int64(b.handle), row)))
+	b.bytes = int64(b.c.wrp.Xsqlite3_blob_bytes(int64(b.handle)))
 	b.offset = 0
 	return err
 }

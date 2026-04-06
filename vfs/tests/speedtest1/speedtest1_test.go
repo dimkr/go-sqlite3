@@ -73,7 +73,7 @@ func runBenchmark(b *testing.B, args ...string) {
 		wrp.Write32(argv+ptr_t(i)*ptrlen, uint32(wrp.NewString(a)))
 	}
 
-	wrp.Xmain_speedtest1(int32(len(args)), int32(argv))
+	wrp.Xmain_speedtest1(int32(len(args)), int64(argv))
 }
 
 func Benchmark_speedtest1(b *testing.B) {

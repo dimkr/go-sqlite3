@@ -14,7 +14,7 @@ type mmapState struct {
 	regions []*MappedRegion
 }
 
-func (w *Wrapper) MapRegion(f *os.File, offset int64, size int32, readOnly bool) (*MappedRegion, error) {
+func (w *Wrapper) MapRegion(f *os.File, offset, size int64, readOnly bool) (*MappedRegion, error) {
 	r := w.newRegion(size)
 	err := r.mmap(f, offset, readOnly)
 	if err != nil {
@@ -23,7 +23,7 @@ func (w *Wrapper) MapRegion(f *os.File, offset int64, size int32, readOnly bool)
 	return r, nil
 }
 
-func (w *Wrapper) newRegion(size int32) *MappedRegion {
+func (w *Wrapper) newRegion(size int64) *MappedRegion {
 	// Find unused region.
 	for _, r := range w.regions {
 		if !r.used && r.size == size {
@@ -32,7 +32,7 @@ func (w *Wrapper) newRegion(size int32) *MappedRegion {
 	}
 
 	// Allocate page aligned memmory.
-	ptr := Ptr_t(w.Xaligned_alloc(int32(unix.Getpagesize()), size))
+	ptr := Ptr_t(w.Xaligned_alloc(int64(unix.Getpagesize()), size))
 	if ptr == 0 {
 		panic(errutil.OOMErr)
 	}
@@ -51,7 +51,7 @@ func (w *Wrapper) newRegion(size int32) *MappedRegion {
 type MappedRegion struct {
 	addr unsafe.Pointer
 	Ptr  Ptr_t
-	size int32
+	size int64
 	used bool
 }
 

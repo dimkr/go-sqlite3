@@ -41,8 +41,8 @@ func (c *Conn) Config(op DBConfig, arg ...bool) (bool, error) {
 	c.wrp.Write32(argsPtr+0*ptrlen, uint32(flag))
 	c.wrp.Write32(argsPtr+1*ptrlen, uint32(argsPtr))
 
-	rc := res_t(c.wrp.Xsqlite3_db_config(int32(c.handle),
-		int32(op), int32(argsPtr)))
+	rc := res_t(c.wrp.Xsqlite3_db_config(int64(c.handle),
+		int32(op), int64(argsPtr)))
 	return c.wrp.ReadBool(argsPtr), c.error(rc)
 }
 
@@ -71,7 +71,7 @@ func (c *Conn) ConfigLog(cb func(code ExtendedErrorCode, msg string)) error {
 	return nil
 }
 
-func (e *env) Xgo_log(_, iCode, zMsg int32) {
+func (e *env) Xgo_log(_ int64, iCode int32, zMsg int64) {
 	if c, ok := e.DB.(*Conn); ok && c.log != nil {
 		msg := e.ReadString(ptr_t(zMsg), _MAX_LENGTH)
 		c.log(xErrorCode(iCode), msg)
@@ -108,7 +108,7 @@ func (c *Conn) FileControl(schema string, op FcntlOpcode, arg ...any) (any, erro
 
 	case FCNTL_RESET_CACHE, FCNTL_NULL_IO:
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
+			int64(c.handle), int64(schemaPtr),
 			int32(op), 0))
 
 	case FCNTL_PERSIST_WAL, FCNTL_POWERSAFE_OVERWRITE:
@@ -121,15 +121,15 @@ func (c *Conn) FileControl(schema string, op FcntlOpcode, arg ...any) (any, erro
 		}
 		c.wrp.Write32(ptr, uint32(flag))
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
-			int32(op), int32(ptr)))
+			int64(c.handle), int64(schemaPtr),
+			int32(op), int64(ptr)))
 		ret = c.wrp.ReadBool(ptr)
 
 	case FCNTL_CHUNK_SIZE:
 		c.wrp.Write32(ptr, uint32(arg[0].(int)))
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
-			int32(op), int32(ptr)))
+			int64(c.handle), int64(schemaPtr),
+			int32(op), int64(ptr)))
 
 	case FCNTL_RESERVE_BYTES:
 		bytes := -1
@@ -138,30 +138,30 @@ func (c *Conn) FileControl(schema string, op FcntlOpcode, arg ...any) (any, erro
 		}
 		c.wrp.Write32(ptr, uint32(bytes))
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
-			int32(op), int32(ptr)))
+			int64(c.handle), int64(schemaPtr),
+			int32(op), int64(ptr)))
 		ret = int(int32(c.wrp.Read32(ptr)))
 
 	case FCNTL_DATA_VERSION:
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
-			int32(op), int32(ptr)))
+			int64(c.handle), int64(schemaPtr),
+			int32(op), int64(ptr)))
 		ret = uint32(c.wrp.Read32(ptr))
 
 	case FCNTL_LOCKSTATE:
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
-			int32(op), int32(ptr)))
+			int64(c.handle), int64(schemaPtr),
+			int32(op), int64(ptr)))
 		ret = vfs.LockLevel(c.wrp.Read32(ptr))
 
 	case FCNTL_VFSNAME, FCNTL_VFS_POINTER:
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
-			int32(FCNTL_VFS_POINTER), int32(ptr)))
+			int64(c.handle), int64(schemaPtr),
+			int32(FCNTL_VFS_POINTER), int64(ptr)))
 		if rc == _OK {
-			const zNameOffset = 16
-			ptr = ptr_t(c.wrp.Read32(ptr))
-			ptr = ptr_t(c.wrp.Read32(ptr + zNameOffset))
+			const zNameOffset = 24
+			ptr = ptr_t(c.wrp.Read64(ptr))
+			ptr = ptr_t(c.wrp.Read64(ptr + zNameOffset))
 			name := c.wrp.ReadString(ptr, _MAX_NAME)
 			if op == FCNTL_VFS_POINTER {
 				ret = vfs.Find(name)
@@ -172,12 +172,12 @@ func (c *Conn) FileControl(schema string, op FcntlOpcode, arg ...any) (any, erro
 
 	case FCNTL_FILE_POINTER, FCNTL_JOURNAL_POINTER:
 		rc = res_t(c.wrp.Xsqlite3_file_control(
-			int32(c.handle), int32(schemaPtr),
-			int32(op), int32(ptr)))
+			int64(c.handle), int64(schemaPtr),
+			int32(op), int64(ptr)))
 		if rc == _OK {
-			const fileHandleOffset = 4
-			ptr = ptr_t(c.wrp.Read32(ptr))
-			ptr = ptr_t(c.wrp.Read32(ptr + fileHandleOffset))
+			const fileHandleOffset = 8
+			ptr = ptr_t(c.wrp.Read64(ptr))
+			ptr = ptr_t(c.wrp.Read64(ptr + fileHandleOffset))
 			ret = c.wrp.GetHandle(ptr)
 		}
 	}
@@ -193,7 +193,7 @@ func (c *Conn) FileControl(schema string, op FcntlOpcode, arg ...any) (any, erro
 //
 // https://sqlite.org/c3ref/limit.html
 func (c *Conn) Limit(id LimitCategory, value int) int {
-	v := int32(c.wrp.Xsqlite3_limit(int32(c.handle), int32(id), int32(value)))
+	v := int32(c.wrp.Xsqlite3_limit(int64(c.handle), int32(id), int32(value)))
 	return int(v)
 }
 
@@ -205,7 +205,7 @@ func (c *Conn) SetAuthorizer(cb func(action AuthorizerActionCode, name3rd, name4
 	if cb != nil {
 		enable = 1
 	}
-	rc := res_t(c.wrp.Xsqlite3_set_authorizer_go(int32(c.handle), enable))
+	rc := res_t(c.wrp.Xsqlite3_set_authorizer_go(int64(c.handle), enable))
 	if err := c.error(rc); err != nil {
 		return err
 	}
@@ -213,7 +213,7 @@ func (c *Conn) SetAuthorizer(cb func(action AuthorizerActionCode, name3rd, name4
 	return nil
 }
 
-func (e *env) Xgo_authorizer(pDB, action, zName3rd, zName4th, zSchema, zInner int32) (rc int32) {
+func (e *env) Xgo_authorizer(pDB int64, action int32, zName3rd, zName4th, zSchema, zInner int64) (rc int32) {
 	if c, ok := e.DB.(*Conn); ok && c.handle == ptr_t(pDB) && c.authorizer != nil {
 		var name3rd, name4th, schema, inner string
 		if zName3rd != 0 {
@@ -237,7 +237,7 @@ func (e *env) Xgo_authorizer(pDB, action, zName3rd, zName4th, zSchema, zInner in
 //
 // https://sqlite.org/c3ref/trace_v2.html
 func (c *Conn) Trace(mask TraceEvent, cb func(evt TraceEvent, arg1 any, arg2 any) error) error {
-	rc := res_t(c.wrp.Xsqlite3_trace_go(int32(c.handle), int32(mask)))
+	rc := res_t(c.wrp.Xsqlite3_trace_go(int64(c.handle), int32(mask)))
 	if err := c.error(rc); err != nil {
 		return err
 	}
@@ -245,7 +245,7 @@ func (c *Conn) Trace(mask TraceEvent, cb func(evt TraceEvent, arg1 any, arg2 any
 	return nil
 }
 
-func (e *env) Xgo_trace(evt, pDB, pArg1, pArg2 int32) int32 {
+func (e *env) Xgo_trace(evt int32, pDB, pArg1, pArg2 int64) int32 {
 	if c, ok := e.DB.(*Conn); ok && c.handle == ptr_t(pDB) && c.trace != nil {
 		var arg1, arg2 any
 		if TraceEvent(evt) == TRACE_CLOSE {
@@ -284,8 +284,8 @@ func (c *Conn) WALCheckpoint(schema string, mode CheckpointMode) (nLog, nCkpt in
 	nCkptPtr := c.arena.New(ptrlen)
 	schemaPtr := c.arena.String(schema)
 	rc := res_t(c.wrp.Xsqlite3_wal_checkpoint_v2(
-		int32(c.handle), int32(schemaPtr), int32(mode),
-		int32(nLogPtr), int32(nCkptPtr)))
+		int64(c.handle), int64(schemaPtr), int32(mode),
+		int64(nLogPtr), int64(nCkptPtr)))
 	nLog = int(int32(c.wrp.Read32(nLogPtr)))
 	nCkpt = int(int32(c.wrp.Read32(nCkptPtr)))
 	return nLog, nCkpt, c.error(rc)
@@ -295,7 +295,7 @@ func (c *Conn) WALCheckpoint(schema string, mode CheckpointMode) (nLog, nCkpt in
 //
 // https://sqlite.org/c3ref/wal_autocheckpoint.html
 func (c *Conn) WALAutoCheckpoint(pages int) error {
-	rc := res_t(c.wrp.Xsqlite3_wal_autocheckpoint(int32(c.handle), int32(pages)))
+	rc := res_t(c.wrp.Xsqlite3_wal_autocheckpoint(int64(c.handle), int32(pages)))
 	return c.error(rc)
 }
 
@@ -308,11 +308,11 @@ func (c *Conn) WALHook(cb func(db *Conn, schema string, pages int) error) {
 	if cb != nil {
 		enable = 1
 	}
-	c.wrp.Xsqlite3_wal_hook_go(int32(c.handle), enable)
+	c.wrp.Xsqlite3_wal_hook_go(int64(c.handle), enable)
 	c.wal = cb
 }
 
-func (e *env) Xgo_wal_hook(_, pDB, zSchema, pages int32) int32 {
+func (e *env) Xgo_wal_hook(_, pDB, zSchema int64, pages int32) int32 {
 	if c, ok := e.DB.(*Conn); ok && c.handle == ptr_t(pDB) && c.wal != nil {
 		schema := e.ReadString(ptr_t(zSchema), _MAX_NAME)
 		err := c.wal(c, schema, int(pages))
@@ -330,11 +330,11 @@ func (c *Conn) AutoVacuumPages(cb func(schema string, dbPages, freePages, bytesP
 	if cb != nil {
 		funcPtr = c.wrp.AddHandle(cb)
 	}
-	rc := res_t(c.wrp.Xsqlite3_autovacuum_pages_go(int32(c.handle), int32(funcPtr)))
+	rc := res_t(c.wrp.Xsqlite3_autovacuum_pages_go(int64(c.handle), int64(funcPtr)))
 	return c.error(rc)
 }
 
-func (e *env) Xgo_autovacuum_pages(pApp, zSchema, nDbPage, nFreePage, nBytePerPage int32) int32 {
+func (e *env) Xgo_autovacuum_pages(pApp, zSchema int64, nDbPage, nFreePage, nBytePerPage int32) int32 {
 	fn := e.GetHandle(ptr_t(pApp)).(func(schema string, dbPages, freePages, bytesPerPage uint) uint)
 	schema := e.ReadString(ptr_t(zSchema), _MAX_NAME)
 	return int32(fn(schema, uint(uint32(nDbPage)), uint(uint32(nFreePage)), uint(uint32(nBytePerPage))))

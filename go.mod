@@ -24,3 +24,5 @@ retract (
 	v0.23.2 // tagged from the wrong branch
 	v0.4.0 // tagged from the wrong branch
 )
+
+replace github.com/ncruces/go-sqlite3-wasm => "/tmp/go-sqlite3-wasm"

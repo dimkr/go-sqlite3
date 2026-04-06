@@ -73,29 +73,29 @@ func (*env) Xtanh(x float64) float64     { return math.Tanh(x) }
 
 // String functions.
 
-func (e *env) Xmemchr(s, c, n int32) int32 {
+func (e *env) Xmemchr(s int64, c int32, n int64) int64 {
 	m := e.Buf[s:]
 	if len(m) > int(n) {
 		m = m[:n]
 	}
 	if i := bytes.IndexByte(m, byte(c)); i >= 0 {
-		return s + int32(i)
+		return s + int64(i)
 	}
 	return 0
 }
 
-func (e *env) Xmemcmp(s1, s2, n int32) int32 {
+func (e *env) Xmemcmp(s1, s2, n int64) int32 {
 	e1, e2 := s1+n, s2+n
 	m1 := e.Buf[s1:e1]
 	m2 := e.Buf[s2:e2]
 	return int32(bytes.Compare(m1, m2))
 }
 
-func (e *env) Xstrlen(s int32) int32 {
-	return int32(bytes.IndexByte(e.Buf[s:], 0))
+func (e *env) Xstrlen(s int64) int64 {
+	return int64(bytes.IndexByte(e.Buf[s:], 0))
 }
 
-func (e *env) Xstrchr(s, c int32) int32 {
+func (e *env) Xstrchr(s int64, c int32) int64 {
 	s = e.Xstrchrnul(s, c)
 	if e.Buf[s] == byte(c) {
 		return s
@@ -103,7 +103,7 @@ func (e *env) Xstrchr(s, c int32) int32 {
 	return 0
 }
 
-func (e *env) Xstrchrnul(s, c int32) int32 {
+func (e *env) Xstrchrnul(s int64, c int32) int64 {
 	m := e.Buf[s:]
 	m = m[:bytes.IndexByte(m, 0)]
 	b := byte(c)
@@ -114,19 +114,19 @@ func (e *env) Xstrchrnul(s, c int32) int32 {
 			l = i
 		}
 	}
-	return s + int32(l)
+	return s + int64(l)
 }
 
-func (e *env) Xstrrchr(s, c int32) int32 {
+func (e *env) Xstrrchr(s int64, c int32) int64 {
 	m := e.Buf[s:]
 	m = m[:bytes.IndexByte(m, 0)+1]
 	if i := bytes.LastIndexByte(m, byte(c)); i >= 0 {
-		return s + int32(i)
+		return s + int64(i)
 	}
 	return 0
 }
 
-func (e *env) Xstrcmp(s1, s2 int32) int32 {
+func (e *env) Xstrcmp(s1, s2 int64) int32 {
 	m1 := e.Buf[s1:]
 	m2 := e.Buf[s2:]
 	m1 = m1[:bytes.IndexByte(m1, 0)]
@@ -134,7 +134,7 @@ func (e *env) Xstrcmp(s1, s2 int32) int32 {
 	return int32(bytes.Compare(m1, m2))
 }
 
-func (e *env) Xstrncmp(s1, s2, n int32) int32 {
+func (e *env) Xstrncmp(s1, s2, n int64) int32 {
 	m1 := e.Buf[s1:]
 	m2 := e.Buf[s2:]
 	m1 = m1[:bytes.IndexByte(m1, 0)]
@@ -148,12 +148,12 @@ func (e *env) Xstrncmp(s1, s2, n int32) int32 {
 	return int32(bytes.Compare(m1, m2))
 }
 
-func (e *env) Xstrspn(s, accept int32) int32 {
+func (e *env) Xstrspn(s, accept int64) int64 {
 	m := e.Buf[s:]
 	a := e.Buf[accept:]
 	a = a[:bytes.IndexByte(a, 0)]
 
-	i := int32(0)
+	i := int64(0)
 	for _, b := range m {
 		if bytes.IndexByte(a, b) == -1 {
 			break
@@ -163,12 +163,12 @@ func (e *env) Xstrspn(s, accept int32) int32 {
 	return i
 }
 
-func (e *env) Xstrcspn(s, reject int32) int32 {
+func (e *env) Xstrcspn(s, reject int64) int64 {
 	m := e.Buf[s:]
 	r := e.Buf[reject:]
 	r = r[:bytes.IndexByte(r, 0)]
 
-	i := int32(0)
+	i := int64(0)
 	for _, b := range m {
 		if b == 0 || bytes.IndexByte(r, b) != -1 {
 			break
@@ -178,7 +178,7 @@ func (e *env) Xstrcspn(s, reject int32) int32 {
 	return i
 }
 
-func (e *env) Xstrstr(haystack, needle int32) int32 {
+func (e *env) Xstrstr(haystack, needle int64) int64 {
 	h := e.Buf[haystack:]
 	n := e.Buf[needle:]
 	h = h[:bytes.IndexByte(h, 0)]
@@ -187,54 +187,64 @@ func (e *env) Xstrstr(haystack, needle int32) int32 {
 	if i < 0 {
 		return 0
 	}
-	return haystack + int32(i)
+	return haystack + int64(i)
 }
 
-func (e *env) Xstrcpy(d, s int32) int32 {
+func (e *env) Xstrcpy(d, s int64) int64 {
 	m := e.Buf[s:]
 	m = m[:bytes.IndexByte(m, 0)+1]
 	copy(e.Buf[d:], m)
 	return d
 }
 
+// 128-bit multiplication.
+
+func (e *env) X__multi3(ret, alo, ahi, blo, bhi int64) {
+	hi, lo := bits.Mul64(uint64(alo), uint64(blo))
+	hi += uint64(alo) * uint64(bhi)
+	hi += uint64(ahi) * uint64(blo)
+	e.Write64(ptr_t(ret), lo)
+	e.Write64(ptr_t(ret+8), hi)
+}
+
 // VFS functions.
 
-func (e *env) Xgo_randomness(pVfs, nByte, zByte int32) int32 {
+func (e *env) Xgo_randomness(pVfs int64, nByte int32, zByte int64) int32 {
 	mem := e.Bytes(ptr_t(zByte), int64(nByte))
 	n, _ := rand.Reader.Read(mem)
 	return int32(n)
 }
 
-func (e *env) Xgo_sleep(pVfs, nMicro int32) int32 {
+func (e *env) Xgo_sleep(pVfs int64, nMicro int32) int32 {
 	time.Sleep(time.Duration(nMicro) * time.Microsecond)
 	return _OK
 }
 
-func (e *env) Xgo_current_time_64(pVfs, nMicro int32) int32 {
+func (e *env) Xgo_current_time_64(pVfs, nMicro int64) int32 {
 	day, nsec := julianday.Date(time.Now())
 	msec := day*86_400_000 + nsec/1_000_000
 	e.Write64(ptr_t(nMicro), uint64(msec))
 	return int32(_OK)
 }
 
-func (e *env) Xgo_localtime(pTm int32, t int64) int32 {
-	const size = 32 / 8
+func (e *env) Xgo_localtime(pTm int64, t int64) int32 {
+	const size = 64 / 8
 	mem := e.Memory
 	tm := time.Unix(t, 0)
 	// https://pubs.opengroup.org/onlinepubs/7908799/xsh/time.h.html
-	mem.Write32(ptr_t(pTm+0*size), uint32(tm.Second()))
-	mem.Write32(ptr_t(pTm+1*size), uint32(tm.Minute()))
-	mem.Write32(ptr_t(pTm+2*size), uint32(tm.Hour()))
-	mem.Write32(ptr_t(pTm+3*size), uint32(tm.Day()))
-	mem.Write32(ptr_t(pTm+4*size), uint32(tm.Month()-time.January))
-	mem.Write32(ptr_t(pTm+5*size), uint32(tm.Year()-1900))
-	mem.Write32(ptr_t(pTm+6*size), uint32(tm.Weekday()-time.Sunday))
-	mem.Write32(ptr_t(pTm+7*size), uint32(tm.YearDay()-1))
+	mem.Write64(ptr_t(pTm+0*size), uint64(tm.Second()))
+	mem.Write64(ptr_t(pTm+1*size), uint64(tm.Minute()))
+	mem.Write64(ptr_t(pTm+2*size), uint64(tm.Hour()))
+	mem.Write64(ptr_t(pTm+3*size), uint64(tm.Day()))
+	mem.Write64(ptr_t(pTm+4*size), uint64(tm.Month()-time.January))
+	mem.Write64(ptr_t(pTm+5*size), uint64(tm.Year()-1900))
+	mem.Write64(ptr_t(pTm+6*size), uint64(tm.Weekday()-time.Sunday))
+	mem.Write64(ptr_t(pTm+7*size), uint64(tm.YearDay()-1))
 	mem.WriteBool(ptr_t(pTm+8*size), tm.IsDST())
 	return _OK
 }
 
-func (e *env) Xgo_vfs_find(zVfsName int32) int32 {
+func (e *env) Xgo_vfs_find(zVfsName int64) int32 {
 	if vfs.Find(e.ReadString(ptr_t(zVfsName), _MAX_NAME)) != nil {
 		return 1
 	}
@@ -242,141 +252,141 @@ func (e *env) Xgo_vfs_find(zVfsName int32) int32 {
 }
 
 //go:linkname vfsFullPathname github.com/ncruces/go-sqlite3/vfs.vfsFullPathname
-func vfsFullPathname(_ *sqlite3_wrap.Wrapper, v0, v1, v2, v3 int32) int32
+func vfsFullPathname(_ *sqlite3_wrap.Wrapper, v0, v1 int64, v2 int32, v3 int64) int32
 
-func (e *env) Xgo_full_pathname(v0, v1, v2, v3 int32) int32 {
+func (e *env) Xgo_full_pathname(v0, v1 int64, v2 int32, v3 int64) int32 {
 	return vfsFullPathname(e.Wrapper, v0, v1, v2, v3)
 }
 
 //go:linkname vfsDelete github.com/ncruces/go-sqlite3/vfs.vfsDelete
-func vfsDelete(_ *sqlite3_wrap.Wrapper, v0, v1, v2 int32) int32
+func vfsDelete(_ *sqlite3_wrap.Wrapper, v0, v1 int64, v2 int32) int32
 
-func (e *env) Xgo_delete(v0, v1, v2 int32) int32 {
+func (e *env) Xgo_delete(v0, v1 int64, v2 int32) int32 {
 	return vfsDelete(e.Wrapper, v0, v1, v2)
 }
 
 //go:linkname vfsAccess github.com/ncruces/go-sqlite3/vfs.vfsAccess
-func vfsAccess(_ *sqlite3_wrap.Wrapper, v0, v1, v2, v3 int32) int32
+func vfsAccess(_ *sqlite3_wrap.Wrapper, v0, v1 int64, v2 int32, v3 int64) int32
 
-func (e *env) Xgo_access(v0, v1, v2, v3 int32) int32 {
+func (e *env) Xgo_access(v0, v1 int64, v2 int32, v3 int64) int32 {
 	return vfsAccess(e.Wrapper, v0, v1, v2, v3)
 }
 
 //go:linkname vfsOpen github.com/ncruces/go-sqlite3/vfs.vfsOpen
-func vfsOpen(_ *sqlite3_wrap.Wrapper, v0, v1, v2, v3, v4, v5 int32) int32
+func vfsOpen(_ *sqlite3_wrap.Wrapper, v0, v1, v2 int64, v3 int32, v4, v5 int64) int32
 
-func (e *env) Xgo_open(v0, v1, v2, v3, v4, v5 int32) int32 {
+func (e *env) Xgo_open(v0, v1, v2 int64, v3 int32, v4, v5 int64) int32 {
 	return vfsOpen(e.Wrapper, v0, v1, v2, v3, v4, v5)
 }
 
 //go:linkname vfsClose github.com/ncruces/go-sqlite3/vfs.vfsClose
-func vfsClose(_ *sqlite3_wrap.Wrapper, v0 int32) int32
+func vfsClose(_ *sqlite3_wrap.Wrapper, v0 int64) int32
 
-func (e *env) Xgo_close(v0 int32) int32 {
+func (e *env) Xgo_close(v0 int64) int32 {
 	return vfsClose(e.Wrapper, v0)
 }
 
 //go:linkname vfsRead github.com/ncruces/go-sqlite3/vfs.vfsRead
-func vfsRead(_ *sqlite3_wrap.Wrapper, v0, v1, v2 int32, v3 int64) int32
+func vfsRead(_ *sqlite3_wrap.Wrapper, v0, v1 int64, v2 int32, v3 int64) int32
 
-func (e *env) Xgo_read(v0, v1, v2 int32, v3 int64) int32 {
+func (e *env) Xgo_read(v0, v1 int64, v2 int32, v3 int64) int32 {
 	return vfsRead(e.Wrapper, v0, v1, v2, v3)
 }
 
 //go:linkname vfsWrite github.com/ncruces/go-sqlite3/vfs.vfsWrite
-func vfsWrite(_ *sqlite3_wrap.Wrapper, v0, v1, v2 int32, v3 int64) int32
+func vfsWrite(_ *sqlite3_wrap.Wrapper, v0, v1 int64, v2 int32, v3 int64) int32
 
-func (e *env) Xgo_write(v0, v1, v2 int32, v3 int64) int32 {
+func (e *env) Xgo_write(v0, v1 int64, v2 int32, v3 int64) int32 {
 	return vfsWrite(e.Wrapper, v0, v1, v2, v3)
 }
 
 //go:linkname vfsTruncate github.com/ncruces/go-sqlite3/vfs.vfsTruncate
-func vfsTruncate(_ *sqlite3_wrap.Wrapper, v0 int32, v1 int64) int32
+func vfsTruncate(_ *sqlite3_wrap.Wrapper, v0 int64, v1 int64) int32
 
-func (e *env) Xgo_truncate(v0 int32, v1 int64) int32 {
+func (e *env) Xgo_truncate(v0 int64, v1 int64) int32 {
 	return vfsTruncate(e.Wrapper, v0, v1)
 }
 
 //go:linkname vfsSync github.com/ncruces/go-sqlite3/vfs.vfsSync
-func vfsSync(_ *sqlite3_wrap.Wrapper, v0, v1 int32) int32
+func vfsSync(_ *sqlite3_wrap.Wrapper, v0 int64, v1 int32) int32
 
-func (e *env) Xgo_sync(v0, v1 int32) int32 {
+func (e *env) Xgo_sync(v0 int64, v1 int32) int32 {
 	return vfsSync(e.Wrapper, v0, v1)
 }
 
 //go:linkname vfsFileSize github.com/ncruces/go-sqlite3/vfs.vfsFileSize
-func vfsFileSize(_ *sqlite3_wrap.Wrapper, v0, v1 int32) int32
+func vfsFileSize(_ *sqlite3_wrap.Wrapper, v0, v1 int64) int32
 
-func (e *env) Xgo_file_size(v0, v1 int32) int32 {
+func (e *env) Xgo_file_size(v0, v1 int64) int32 {
 	return vfsFileSize(e.Wrapper, v0, v1)
 }
 
 //go:linkname vfsLock github.com/ncruces/go-sqlite3/vfs.vfsLock
-func vfsLock(_ *sqlite3_wrap.Wrapper, v0, v1 int32) int32
+func vfsLock(_ *sqlite3_wrap.Wrapper, v0 int64, v1 int32) int32
 
-func (e *env) Xgo_lock(v0 int32, v1 int32) int32 {
+func (e *env) Xgo_lock(v0 int64, v1 int32) int32 {
 	return vfsLock(e.Wrapper, v0, v1)
 }
 
 //go:linkname vfsUnlock github.com/ncruces/go-sqlite3/vfs.vfsUnlock
-func vfsUnlock(_ *sqlite3_wrap.Wrapper, v0, v1 int32) int32
+func vfsUnlock(_ *sqlite3_wrap.Wrapper, v0 int64, v1 int32) int32
 
-func (e *env) Xgo_unlock(v0, v1 int32) int32 {
+func (e *env) Xgo_unlock(v0 int64, v1 int32) int32 {
 	return vfsUnlock(e.Wrapper, v0, v1)
 }
 
 //go:linkname vfsCheckReservedLock github.com/ncruces/go-sqlite3/vfs.vfsCheckReservedLock
-func vfsCheckReservedLock(_ *sqlite3_wrap.Wrapper, v0, v1 int32) int32
+func vfsCheckReservedLock(_ *sqlite3_wrap.Wrapper, v0, v1 int64) int32
 
-func (e *env) Xgo_check_reserved_lock(v0, v1 int32) int32 {
+func (e *env) Xgo_check_reserved_lock(v0, v1 int64) int32 {
 	return vfsCheckReservedLock(e.Wrapper, v0, v1)
 }
 
 //go:linkname vfsFileControl github.com/ncruces/go-sqlite3/vfs.vfsFileControl
-func vfsFileControl(_ *sqlite3_wrap.Wrapper, v0, v1, v2 int32) int32
+func vfsFileControl(_ *sqlite3_wrap.Wrapper, v0 int64, v1 int32, v2 int64) int32
 
-func (e *env) Xgo_file_control(v0, v1, v2 int32) int32 {
+func (e *env) Xgo_file_control(v0 int64, v1 int32, v2 int64) int32 {
 	return vfsFileControl(e.Wrapper, v0, v1, v2)
 }
 
 //go:linkname vfsSectorSize github.com/ncruces/go-sqlite3/vfs.vfsSectorSize
-func vfsSectorSize(_ *sqlite3_wrap.Wrapper, v0 int32) int32
+func vfsSectorSize(_ *sqlite3_wrap.Wrapper, v0 int64) int32
 
-func (e *env) Xgo_sector_size(v0 int32) int32 {
+func (e *env) Xgo_sector_size(v0 int64) int32 {
 	return vfsSectorSize(e.Wrapper, v0)
 }
 
 //go:linkname vfsDeviceCharacteristics github.com/ncruces/go-sqlite3/vfs.vfsDeviceCharacteristics
-func vfsDeviceCharacteristics(_ *sqlite3_wrap.Wrapper, v0 int32) int32
+func vfsDeviceCharacteristics(_ *sqlite3_wrap.Wrapper, v0 int64) int32
 
-func (e *env) Xgo_device_characteristics(v0 int32) int32 {
+func (e *env) Xgo_device_characteristics(v0 int64) int32 {
 	return vfsDeviceCharacteristics(e.Wrapper, v0)
 }
 
 //go:linkname vfsShmBarrier github.com/ncruces/go-sqlite3/vfs.vfsShmBarrier
-func vfsShmBarrier(_ *sqlite3_wrap.Wrapper, v0 int32)
+func vfsShmBarrier(_ *sqlite3_wrap.Wrapper, v0 int64)
 
-func (e *env) Xgo_shm_barrier(v0 int32) {
+func (e *env) Xgo_shm_barrier(v0 int64) {
 	vfsShmBarrier(e.Wrapper, v0)
 }
 
 //go:linkname vfsShmMap github.com/ncruces/go-sqlite3/vfs.vfsShmMap
-func vfsShmMap(_ *sqlite3_wrap.Wrapper, v0, v1, v2, v3, v4 int32) int32
+func vfsShmMap(_ *sqlite3_wrap.Wrapper, v0 int64, v1, v2, v3 int32, v4 int64) int32
 
-func (e *env) Xgo_shm_map(v0, v1, v2, v3, v4 int32) int32 {
+func (e *env) Xgo_shm_map(v0 int64, v1, v2, v3 int32, v4 int64) int32 {
 	return vfsShmMap(e.Wrapper, v0, v1, v2, v3, v4)
 }
 
 //go:linkname vfsShmLock github.com/ncruces/go-sqlite3/vfs.vfsShmLock
-func vfsShmLock(_ *sqlite3_wrap.Wrapper, v0, v1, v2, v3 int32) int32
+func vfsShmLock(_ *sqlite3_wrap.Wrapper, v0 int64, v1, v2, v3 int32) int32
 
-func (e *env) Xgo_shm_lock(v0, v1, v2, v3 int32) int32 {
+func (e *env) Xgo_shm_lock(v0 int64, v1, v2, v3 int32) int32 {
 	return vfsShmLock(e.Wrapper, v0, v1, v2, v3)
 }
 
 //go:linkname vfsShmUnmap github.com/ncruces/go-sqlite3/vfs.vfsShmUnmap
-func vfsShmUnmap(_ *sqlite3_wrap.Wrapper, v0, v1 int32) int32
+func vfsShmUnmap(_ *sqlite3_wrap.Wrapper, v0 int64, v1 int32) int32
 
-func (e *env) Xgo_shm_unmap(v0, v1 int32) int32 {
+func (e *env) Xgo_shm_unmap(v0 int64, v1 int32) int32 {
 	return vfsShmUnmap(e.Wrapper, v0, v1)
 }

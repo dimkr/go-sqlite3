@@ -9,12 +9,12 @@ import (
 )
 
 const (
-	PtrLen = 4
+	PtrLen = 8
 	IntLen = 4
 )
 
 type (
-	Ptr_t uint32
+	Ptr_t uint64
 	Res_t int32
 )
 

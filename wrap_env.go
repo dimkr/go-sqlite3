@@ -10,11 +10,11 @@ func (e *env) Xexit(c int32) {
 	testenv.Exit(c)
 }
 
-func (e *env) Xsystem(ptr int32) int32 {
-	return testenv.System(e.Wrapper, ptr)
+func (e *env) Xsystem(ptr int64) int32 {
+	return testenv.System(e.Wrapper, int32(ptr))
 }
 
-func (e *env) Xputs(ptr int32) int32 {
+func (e *env) Xputs(ptr int64) int32 {
 	if testenv.TB == nil {
 		return -1
 	}
@@ -24,7 +24,7 @@ func (e *env) Xputs(ptr int32) int32 {
 	return 0
 }
 
-func (e *env) Xfclose(h int32) int32 {
+func (e *env) Xfclose(h int64) int32 {
 	if testenv.TB == nil {
 		return -1
 	}
@@ -34,7 +34,7 @@ func (e *env) Xfclose(h int32) int32 {
 	return 0
 }
 
-func (e *env) Xfopen(path, mode int32) int32 {
+func (e *env) Xfopen(path, mode int64) int64 {
 	if testenv.TB == nil {
 		return 0
 	}
@@ -43,17 +43,17 @@ func (e *env) Xfopen(path, mode int32) int32 {
 	if err != nil {
 		return 0
 	}
-	return int32(e.AddHandle(f))
+	return int64(e.AddHandle(f))
 }
 
-func (e *env) Xfflush(h int32) int32 {
+func (e *env) Xfflush(h int64) int32 {
 	if testenv.TB == nil {
 		return -1
 	}
 	return 0
 }
 
-func (e *env) Xfputc(c, h int32) int32 {
+func (e *env) Xfputc(c int32, h int64) int32 {
 	if testenv.TB == nil {
 		return -1
 	}
@@ -63,26 +63,26 @@ func (e *env) Xfputc(c, h int32) int32 {
 	return 0
 }
 
-func (e *env) Xfwrite(ptr, sz, cnt, h int32) int32 {
+func (e *env) Xfwrite(ptr, sz, cnt, h int64) int64 {
 	if testenv.TB == nil {
 		return 0
 	}
 	b := e.Buf[ptr:][:sz*cnt]
 	n, _ := testenv.Write(b)
-	return int32(n / int(sz))
+	return int64(n / int(sz))
 }
 
-func (e *env) Xfread(ptr, sz, cnt, h int32) int32 {
+func (e *env) Xfread(ptr, sz, cnt, h int64) int64 {
 	if testenv.TB == nil {
 		return 0
 	}
 	f := e.GetHandle(ptr_t(h)).(io.Reader)
 	b := e.Buf[ptr:][:sz*cnt]
 	n, _ := f.Read(b)
-	return int32(n / int(sz))
+	return int64(n / int(sz))
 }
 
-func (e *env) Xftell(h int32) int32 {
+func (e *env) Xftell(h int64) int64 {
 	if testenv.TB == nil {
 		return -1
 	}
@@ -91,15 +91,15 @@ func (e *env) Xftell(h int32) int32 {
 	if err != nil {
 		return -1
 	}
-	return int32(n)
+	return n
 }
 
-func (e *env) Xfseek(h, offset, whence int32) int32 {
+func (e *env) Xfseek(h, offset int64, whence int32) int32 {
 	if testenv.TB == nil {
 		return -1
 	}
 	f := e.GetHandle(ptr_t(h)).(io.Seeker)
-	_, err := f.Seek(int64(offset), int(whence))
+	_, err := f.Seek(offset, int(whence))
 	if err != nil {
 		return -1
 	}

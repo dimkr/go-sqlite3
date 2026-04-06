@@ -16,7 +16,7 @@ func (c *Conn) CollationNeeded(cb func(db *Conn, name string)) error {
 	if cb != nil {
 		enable = 1
 	}
-	rc := res_t(c.wrp.Xsqlite3_collation_needed_go(int32(c.handle), enable))
+	rc := res_t(c.wrp.Xsqlite3_collation_needed_go(int64(c.handle), enable))
 	if err := c.error(rc); err != nil {
 		return err
 	}
@@ -31,7 +31,7 @@ func (c *Conn) CollationNeeded(cb func(db *Conn, name string)) error {
 // This can be used to load schemas that contain
 // one or more unknown collating sequences.
 func (c Conn) AnyCollationNeeded() error {
-	rc := res_t(c.wrp.Xsqlite3_anycollseq_init(int32(c.handle), 0, 0))
+	rc := res_t(c.wrp.Xsqlite3_anycollseq_init(int64(c.handle), 0, 0))
 	if err := c.error(rc); err != nil {
 		return err
 	}
@@ -50,7 +50,7 @@ func (c *Conn) CreateCollation(name string, fn CollatingFunction) error {
 		funcPtr = c.wrp.AddHandle(fn)
 	}
 	rc := res_t(c.wrp.Xsqlite3_create_collation_go(
-		int32(c.handle), int32(namePtr), int32(funcPtr)))
+		int64(c.handle), int64(namePtr), int64(funcPtr)))
 	return c.error(rc)
 }
 
@@ -69,8 +69,8 @@ func (c *Conn) CreateFunction(name string, nArg int, flag FunctionFlag, fn Scala
 		funcPtr = c.wrp.AddHandle(fn)
 	}
 	rc := res_t(c.wrp.Xsqlite3_create_function_go(
-		int32(c.handle), int32(namePtr), int32(nArg),
-		int32(flag), int32(funcPtr)))
+		int64(c.handle), int64(namePtr), int32(nArg),
+		int32(flag), int64(funcPtr)))
 	return c.error(rc)
 }
 
@@ -103,8 +103,8 @@ func (c *Conn) CreateAggregateFunction(name string, nArg int, flag FunctionFlag,
 		}))
 	}
 	rc := res_t(c.wrp.Xsqlite3_create_aggregate_function_go(
-		int32(c.handle), int32(namePtr), int32(nArg),
-		int32(flag), int32(funcPtr)))
+		int64(c.handle), int64(namePtr), int32(nArg),
+		int32(flag), int64(funcPtr)))
 	return c.error(rc)
 }
 
@@ -131,8 +131,8 @@ func (c *Conn) CreateWindowFunction(name string, nArg int, flag FunctionFlag, fn
 		}))
 	}
 	rc := res_t(c.wrp.Xsqlite3_create_window_function_go(
-		int32(c.handle), int32(namePtr), int32(nArg),
-		int32(flag), int32(funcPtr)))
+		int64(c.handle), int64(namePtr), int32(nArg),
+		int32(flag), int64(funcPtr)))
 	return c.error(rc)
 }
 
@@ -171,29 +171,29 @@ func (c *Conn) OverloadFunction(name string, nArg int) error {
 	defer c.arena.Mark()()
 	namePtr := c.arena.String(name)
 	rc := res_t(c.wrp.Xsqlite3_overload_function(
-		int32(c.handle), int32(namePtr), int32(nArg)))
+		int64(c.handle), int64(namePtr), int32(nArg)))
 	return c.error(rc)
 }
 
-func (e *env) Xgo_destroy(pApp int32) {
+func (e *env) Xgo_destroy(pApp int64) {
 	e.DelHandle(ptr_t(pApp))
 }
 
-func (e *env) Xgo_collation_needed(pArg, pDB, eTextRep, zName int32) {
+func (e *env) Xgo_collation_needed(pArg, pDB int64, eTextRep int32, zName int64) {
 	if c, ok := e.DB.(*Conn); ok && c.handle == ptr_t(pDB) && c.collation != nil {
 		name := e.ReadString(ptr_t(zName), _MAX_NAME)
 		c.collation(c, name)
 	}
 }
 
-func (e *env) Xgo_compare(pApp, nKey1, pKey1, nKey2, pKey2 int32) int32 {
+func (e *env) Xgo_compare(pApp int64, nKey1 int32, pKey1 int64, nKey2 int32, pKey2 int64) int32 {
 	fn := e.GetHandle(ptr_t(pApp)).(CollatingFunction)
 	return int32(fn(
 		e.Bytes(ptr_t(pKey1), int64(nKey1)),
 		e.Bytes(ptr_t(pKey2), int64(nKey2))))
 }
 
-func (e *env) Xgo_func(pCtx, pApp, nArg, pArg int32) {
+func (e *env) Xgo_func(pCtx, pApp int64, nArg int32, pArg int64) {
 	db := e.DB.(*Conn)
 	args := callbackArgs(db, nArg, ptr_t(pArg))
 	defer returnArgs(args)
@@ -201,7 +201,7 @@ func (e *env) Xgo_func(pCtx, pApp, nArg, pArg int32) {
 	fn(Context{db, ptr_t(pCtx)}, *args...)
 }
 
-func (e *env) Xgo_step(pCtx, pAgg, pApp, nArg, pArg int32) {
+func (e *env) Xgo_step(pCtx, pAgg, pApp int64, nArg int32, pArg int64) {
 	db := e.DB.(*Conn)
 	args := callbackArgs(db, nArg, ptr_t(pArg))
 	defer returnArgs(args)
@@ -209,7 +209,7 @@ func (e *env) Xgo_step(pCtx, pAgg, pApp, nArg, pArg int32) {
 	fn.Step(Context{db, ptr_t(pCtx)}, *args...)
 }
 
-func (e *env) Xgo_value(pCtx, pAgg, pApp, final int32) {
+func (e *env) Xgo_value(pCtx, pAgg, pApp int64, final int32) {
 	db := e.DB.(*Conn)
 	fn, handle := callbackAggregate(db, ptr_t(pAgg), ptr_t(pApp))
 	fn.Value(Context{db, ptr_t(pCtx)})
@@ -229,7 +229,7 @@ func (e *env) Xgo_value(pCtx, pAgg, pApp, final int32) {
 	}
 }
 
-func (e *env) Xgo_inverse(pCtx, pAgg, nArg, pArg int32) {
+func (e *env) Xgo_inverse(pCtx, pAgg int64, nArg int32, pArg int64) {
 	db := e.DB.(*Conn)
 	args := callbackArgs(db, nArg, ptr_t(pArg))
 	defer returnArgs(args)
@@ -239,7 +239,7 @@ func (e *env) Xgo_inverse(pCtx, pAgg, nArg, pArg int32) {
 
 func callbackAggregate(db *Conn, pAgg, pApp ptr_t) (AggregateFunction, ptr_t) {
 	if pApp == 0 {
-		handle := ptr_t(db.wrp.Read32(pAgg))
+		handle := ptr_t(db.wrp.Read64(pAgg))
 		return db.wrp.GetHandle(handle).(AggregateFunction), handle
 	}
 
@@ -247,7 +247,7 @@ func callbackAggregate(db *Conn, pAgg, pApp ptr_t) (AggregateFunction, ptr_t) {
 	fn := db.wrp.GetHandle(pApp).(AggregateConstructor)()
 	if pAgg != 0 {
 		handle := db.wrp.AddHandle(fn)
-		db.wrp.Write32(pAgg, uint32(handle))
+		db.wrp.Write64(pAgg, uint64(handle))
 		return fn, handle
 	}
 	return fn, 0
@@ -269,7 +269,7 @@ func callbackArgs(db *Conn, nArg int32, pArg ptr_t) *[]Value {
 	for i := range lst {
 		lst[i] = Value{
 			c:      db,
-			handle: ptr_t(db.wrp.Read32(pArg + ptr_t(i)*ptrlen)),
+			handle: ptr_t(db.wrp.Read64(pArg + ptr_t(i)*ptrlen)),
 		}
 	}
 	*arg = lst

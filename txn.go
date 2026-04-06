@@ -221,7 +221,7 @@ func (c *Conn) TxnState(schema string) TxnState {
 		defer c.arena.Mark()()
 		ptr = c.arena.String(schema)
 	}
-	return TxnState(c.wrp.Xsqlite3_txn_state(int32(c.handle), int32(ptr)))
+	return TxnState(c.wrp.Xsqlite3_txn_state(int64(c.handle), int64(ptr)))
 }
 
 // CommitHook registers a callback function to be invoked
@@ -234,7 +234,7 @@ func (c *Conn) CommitHook(cb func() (ok bool)) {
 	if cb != nil {
 		enable = 1
 	}
-	c.wrp.Xsqlite3_commit_hook_go(int32(c.handle), enable)
+	c.wrp.Xsqlite3_commit_hook_go(int64(c.handle), enable)
 	c.commit = cb
 }
 
@@ -247,7 +247,7 @@ func (c *Conn) RollbackHook(cb func()) {
 	if cb != nil {
 		enable = 1
 	}
-	c.wrp.Xsqlite3_rollback_hook_go(int32(c.handle), enable)
+	c.wrp.Xsqlite3_rollback_hook_go(int64(c.handle), enable)
 	c.rollback = cb
 }
 
@@ -260,11 +260,11 @@ func (c *Conn) UpdateHook(cb func(action AuthorizerActionCode, schema, table str
 	if cb != nil {
 		enable = 1
 	}
-	c.wrp.Xsqlite3_update_hook_go(int32(c.handle), enable)
+	c.wrp.Xsqlite3_update_hook_go(int64(c.handle), enable)
 	c.update = cb
 }
 
-func (e *env) Xgo_commit_hook(pDB int32) (rollback int32) {
+func (e *env) Xgo_commit_hook(pDB int64) (rollback int32) {
 	if c, ok := e.DB.(*Conn); ok && c.handle == ptr_t(pDB) && c.commit != nil {
 		if !c.commit() {
 			rollback = 1
@@ -273,13 +273,13 @@ func (e *env) Xgo_commit_hook(pDB int32) (rollback int32) {
 	return rollback
 }
 
-func (e *env) Xgo_rollback_hook(pDB int32) {
+func (e *env) Xgo_rollback_hook(pDB int64) {
 	if c, ok := e.DB.(*Conn); ok && c.handle == ptr_t(pDB) && c.rollback != nil {
 		c.rollback()
 	}
 }
 
-func (e *env) Xgo_update_hook(pDB, action, zSchema, zTabName int32, rowid int64) {
+func (e *env) Xgo_update_hook(pDB int64, action int32, zSchema, zTabName, rowid int64) {
 	if c, ok := e.DB.(*Conn); ok && c.handle == ptr_t(pDB) && c.update != nil {
 		schema := e.ReadString(ptr_t(zSchema), _MAX_NAME)
 		table := e.ReadString(ptr_t(zTabName), _MAX_NAME)
@@ -291,6 +291,6 @@ func (e *env) Xgo_update_hook(pDB, action, zSchema, zTabName int32, rowid int64)
 //
 // https://sqlite.org/c3ref/db_cacheflush.html
 func (c *Conn) CacheFlush() error {
-	rc := res_t(c.wrp.Xsqlite3_db_cacheflush(int32(c.handle)))
+	rc := res_t(c.wrp.Xsqlite3_db_cacheflush(int64(c.handle)))
 	return c.error(rc)
 }

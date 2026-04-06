@@ -194,7 +194,7 @@ type FileSharedMemory interface {
 // SharedMemory is a shared-memory WAL-index implementation.
 // Use [NewSharedMemory] to create a shared-memory.
 type SharedMemory interface {
-	shmMap(*sqlite3_wrap.Wrapper, int32, int32, bool) (ptr_t, error)
+	shmMap(*sqlite3_wrap.Wrapper, int64, int64, bool) (ptr_t, error)
 	shmLock(int32, int32, _ShmFlag) error
 	shmUnmap(bool)
 	shmBarrier()

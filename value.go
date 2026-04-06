@@ -18,7 +18,7 @@ type Value struct {
 //
 // https://sqlite.org/c3ref/value_dup.html
 func (v Value) Dup() *Value {
-	ptr := ptr_t(v.c.wrp.Xsqlite3_value_dup(int32(v.handle)))
+	ptr := ptr_t(v.c.wrp.Xsqlite3_value_dup(int64(v.handle)))
 	return &Value{
 		c:      v.c,
 		handle: ptr,
@@ -29,7 +29,7 @@ func (v Value) Dup() *Value {
 //
 // https://sqlite.org/c3ref/value_dup.html
 func (v *Value) Close() error {
-	v.c.wrp.Xsqlite3_value_free(int32(v.handle))
+	v.c.wrp.Xsqlite3_value_free(int64(v.handle))
 	v.handle = 0
 	return nil
 }
@@ -38,21 +38,21 @@ func (v *Value) Close() error {
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) Type() Datatype {
-	return Datatype(v.c.wrp.Xsqlite3_value_type(int32(v.handle)))
+	return Datatype(v.c.wrp.Xsqlite3_value_type(int64(v.handle)))
 }
 
 // Subtype returns the subtype of the value.
 //
 // https://sqlite.org/c3ref/value_subtype.html
 func (v Value) Subtype() uint {
-	return uint(uint32(v.c.wrp.Xsqlite3_value_subtype(int32(v.handle))))
+	return uint(uint32(v.c.wrp.Xsqlite3_value_subtype(int64(v.handle))))
 }
 
 // NumericType returns the numeric datatype of the value.
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) NumericType() Datatype {
-	return Datatype(v.c.wrp.Xsqlite3_value_numeric_type(int32(v.handle)))
+	return Datatype(v.c.wrp.Xsqlite3_value_numeric_type(int64(v.handle)))
 }
 
 // Bool returns the value as a bool.
@@ -76,14 +76,14 @@ func (v Value) Int() int {
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) Int64() int64 {
-	return v.c.wrp.Xsqlite3_value_int64(int32(v.handle))
+	return v.c.wrp.Xsqlite3_value_int64(int64(v.handle))
 }
 
 // Float returns the value as a float64.
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) Float() float64 {
-	return v.c.wrp.Xsqlite3_value_double(int32(v.handle))
+	return v.c.wrp.Xsqlite3_value_double(int64(v.handle))
 }
 
 // Time returns the value as a [time.Time].
@@ -128,7 +128,7 @@ func (v Value) Blob(buf []byte) []byte {
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) RawText() []byte {
-	ptr := ptr_t(v.c.wrp.Xsqlite3_value_text(int32(v.handle)))
+	ptr := ptr_t(v.c.wrp.Xsqlite3_value_text(int64(v.handle)))
 	return v.rawBytes(ptr, 1)
 }
 
@@ -138,7 +138,7 @@ func (v Value) RawText() []byte {
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) RawBlob() []byte {
-	ptr := ptr_t(v.c.wrp.Xsqlite3_value_blob(int32(v.handle)))
+	ptr := ptr_t(v.c.wrp.Xsqlite3_value_blob(int64(v.handle)))
 	return v.rawBytes(ptr, 0)
 }
 
@@ -147,14 +147,14 @@ func (v Value) rawBytes(ptr ptr_t, nul int32) []byte {
 		return nil
 	}
 
-	n := int32(v.c.wrp.Xsqlite3_value_bytes(int32(v.handle)))
+	n := int32(v.c.wrp.Xsqlite3_value_bytes(int64(v.handle)))
 	return v.c.wrp.Bytes(ptr, int64(n+nul))[:n]
 }
 
 // Pointer gets the pointer associated with this value,
 // or nil if it has no associated pointer.
 func (v Value) Pointer() any {
-	ptr := ptr_t(v.c.wrp.Xsqlite3_value_pointer_go(int32(v.handle)))
+	ptr := ptr_t(v.c.wrp.Xsqlite3_value_pointer_go(int64(v.handle)))
 	return v.c.wrp.GetHandle(ptr)
 }
 
@@ -163,7 +163,7 @@ func (v Value) Pointer() any {
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) NoChange() bool {
-	b := int32(v.c.wrp.Xsqlite3_value_nochange(int32(v.handle)))
+	b := int32(v.c.wrp.Xsqlite3_value_nochange(int64(v.handle)))
 	return b != 0
 }
 
@@ -171,7 +171,7 @@ func (v Value) NoChange() bool {
 //
 // https://sqlite.org/c3ref/value_blob.html
 func (v Value) FromBind() bool {
-	b := int32(v.c.wrp.Xsqlite3_value_frombind(int32(v.handle)))
+	b := int32(v.c.wrp.Xsqlite3_value_frombind(int64(v.handle)))
 	return b != 0
 }
 
@@ -182,13 +182,13 @@ func (v Value) FromBind() bool {
 func (v Value) InFirst() (Value, error) {
 	defer v.c.arena.Mark()()
 	valPtr := v.c.arena.New(ptrlen)
-	rc := res_t(v.c.wrp.Xsqlite3_vtab_in_first(int32(v.handle), int32(valPtr)))
+	rc := res_t(v.c.wrp.Xsqlite3_vtab_in_first(int64(v.handle), int64(valPtr)))
 	if err := v.c.error(rc); err != nil {
 		return Value{}, err
 	}
 	return Value{
 		c:      v.c,
-		handle: ptr_t(v.c.wrp.Read32(valPtr)),
+		handle: ptr_t(v.c.wrp.Read64(valPtr)),
 	}, nil
 }
 
@@ -199,12 +199,12 @@ func (v Value) InFirst() (Value, error) {
 func (v Value) InNext() (Value, error) {
 	defer v.c.arena.Mark()()
 	valPtr := v.c.arena.New(ptrlen)
-	rc := res_t(v.c.wrp.Xsqlite3_vtab_in_next(int32(v.handle), int32(valPtr)))
+	rc := res_t(v.c.wrp.Xsqlite3_vtab_in_next(int64(v.handle), int64(valPtr)))
 	if err := v.c.error(rc); err != nil {
 		return Value{}, err
 	}
 	return Value{
 		c:      v.c,
-		handle: ptr_t(v.c.wrp.Read32(valPtr)),
+		handle: ptr_t(v.c.wrp.Read64(valPtr)),
 	}, nil
 }

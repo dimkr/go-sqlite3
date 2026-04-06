@@ -54,7 +54,7 @@ func runTest(t *testing.T, args ...string) {
 		wrp.Write32(argv+ptr_t(i)*ptrlen, uint32(wrp.NewString(a)))
 	}
 
-	if c := wrp.Xmain_mptest(int32(len(args)), int32(argv)); c != 0 {
+	if c := wrp.Xmain_mptest(int32(len(args)), int64(argv)); c != 0 {
 		t.Error("exit error: ", c)
 	}
 }
@@ -272,7 +272,7 @@ func system(wrp *sqlite3_wrap.Wrapper, ptr int32) int32 {
 		}
 
 		defer func() { recover() }()
-		wrp.Xmain_mptest(int32(len(args)), int32(argv))
+		wrp.Xmain_mptest(int32(len(args)), int64(argv))
 	}()
 	return 0
 }
