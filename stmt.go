@@ -614,7 +614,7 @@ func (s *Stmt) Columns(dest ...any) error {
 		case byte(NULL):
 			dest[i] = nil
 		case byte(TEXT):
-			len := int32(mem.Read32(ptr + 4))
+			len := int32(mem.Read32(ptr + 8))
 			if len != 0 {
 				ptr := ptr_t(mem.Read64(ptr))
 				buf := mem.Bytes(ptr, int64(len))
@@ -623,7 +623,7 @@ func (s *Stmt) Columns(dest ...any) error {
 				dest[i] = ""
 			}
 		case byte(BLOB):
-			len := int32(mem.Read32(ptr + 4))
+			len := int32(mem.Read32(ptr + 8))
 			if len != 0 {
 				ptr := ptr_t(mem.Read64(ptr))
 				buf := mem.Bytes(ptr, int64(len))
@@ -633,7 +633,7 @@ func (s *Stmt) Columns(dest ...any) error {
 				dest[i], _ = dest[i].([]byte)
 			}
 		}
-		ptr += 8
+		ptr += 16
 	}
 	return nil
 }
@@ -668,7 +668,7 @@ func (s *Stmt) ColumnsRaw(dest ...any) error {
 		case byte(NULL):
 			dest[i] = nil
 		default:
-			len := int32(mem.Read32(ptr + 4))
+			len := int32(mem.Read32(ptr + 8))
 			if len == 0 && types[i] == byte(BLOB) {
 				dest[i] = []byte{}
 			} else {
@@ -681,14 +681,14 @@ func (s *Stmt) ColumnsRaw(dest ...any) error {
 				dest[i] = buf
 			}
 		}
-		ptr += 8
+		ptr += 16
 	}
 	return nil
 }
 
 func (s *Stmt) columns(count int64) ([]byte, ptr_t, error) {
 	typePtr := s.c.arena.New(count)
-	dataPtr := s.c.arena.New(count * 8)
+	dataPtr := s.c.arena.New(count * 16)
 
 	rc := res_t(s.c.wrp.Xsqlite3_columns_go(
 		int64(s.handle), int32(count), int64(typePtr), int64(dataPtr)))

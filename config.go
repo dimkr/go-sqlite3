@@ -39,7 +39,7 @@ func (c *Conn) Config(op DBConfig, arg ...bool) (bool, error) {
 	}
 
 	c.wrp.Write32(argsPtr+0*ptrlen, uint32(flag))
-	c.wrp.Write32(argsPtr+1*ptrlen, uint32(argsPtr))
+	c.wrp.Write64(argsPtr+1*ptrlen, uint64(argsPtr))
 
 	rc := res_t(c.wrp.Xsqlite3_db_config(int64(c.handle),
 		int32(op), int64(argsPtr)))
