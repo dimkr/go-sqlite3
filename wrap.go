@@ -228,18 +228,18 @@ func (e *env) Xgo_current_time_64(pVfs, nMicro int64) int32 {
 }
 
 func (e *env) Xgo_localtime(pTm int64, t int64) int32 {
-	const size = 64 / 8
+	const size = 32 / 8
 	mem := e.Memory
 	tm := time.Unix(t, 0)
 	// https://pubs.opengroup.org/onlinepubs/7908799/xsh/time.h.html
-	mem.Write64(ptr_t(pTm+0*size), uint64(tm.Second()))
-	mem.Write64(ptr_t(pTm+1*size), uint64(tm.Minute()))
-	mem.Write64(ptr_t(pTm+2*size), uint64(tm.Hour()))
-	mem.Write64(ptr_t(pTm+3*size), uint64(tm.Day()))
-	mem.Write64(ptr_t(pTm+4*size), uint64(tm.Month()-time.January))
-	mem.Write64(ptr_t(pTm+5*size), uint64(tm.Year()-1900))
-	mem.Write64(ptr_t(pTm+6*size), uint64(tm.Weekday()-time.Sunday))
-	mem.Write64(ptr_t(pTm+7*size), uint64(tm.YearDay()-1))
+	mem.Write32(ptr_t(pTm+0*size), uint32(tm.Second()))
+	mem.Write32(ptr_t(pTm+1*size), uint32(tm.Minute()))
+	mem.Write32(ptr_t(pTm+2*size), uint32(tm.Hour()))
+	mem.Write32(ptr_t(pTm+3*size), uint32(tm.Day()))
+	mem.Write32(ptr_t(pTm+4*size), uint32(tm.Month()-time.January))
+	mem.Write32(ptr_t(pTm+5*size), uint32(tm.Year()-1900))
+	mem.Write32(ptr_t(pTm+6*size), uint32(tm.Weekday()-time.Sunday))
+	mem.Write32(ptr_t(pTm+7*size), uint32(tm.YearDay()-1))
 	mem.WriteBool(ptr_t(pTm+8*size), tm.IsDST())
 	return _OK
 }
